@@ -217,8 +217,20 @@ tbody td{padding:9px 10px;font-size:11px;color:var(--gray1);}
     <select class="filter-select" id="fDiv" onchange="applyFilters()">
       <option value="">All Divisions</option>
     </select>
+    <select class="filter-select" id="fGender" onchange="applyFilters()">
+      <option value="">All Genders</option>
+    </select>
+    <select class="filter-select" id="fCat" onchange="applyFilters()">
+      <option value="">All Categories</option>
+    </select>
     <select class="filter-select" id="fType" onchange="applyFilters()">
       <option value="">All Damage Types</option>
+    </select>
+    <select class="filter-select" id="fRoot" onchange="applyFilters()">
+      <option value="">All Root Causes</option>
+    </select>
+    <select class="filter-select" id="fSev" onchange="applyFilters()">
+      <option value="">All Severities</option>
     </select>
     <select class="filter-select" id="fStatus" onchange="applyFilters()">
       <option value="">All Status</option>
@@ -621,9 +633,13 @@ function loadFile(input){
 
 // ── FILTERS ──────────────────────────────────────────────────────────
 function populateFilters(){
-  fill('fDiv',  [...new Set(RAW.map(r=>r.div).filter(Boolean))]);
-  fill('fType', [...new Set(RAW.map(r=>r.dtype).filter(Boolean))]);
-  fill('fStatus',[...new Set(RAW.map(r=>r.status).filter(Boolean))]);
+  fill('fDiv',    [...new Set(RAW.map(r=>r.div).filter(Boolean))]);
+  fill('fGender', [...new Set(RAW.map(r=>r.gender).filter(Boolean))]);
+  fill('fCat',    [...new Set(RAW.map(r=>r.cat).filter(Boolean))]);
+  fill('fType',   [...new Set(RAW.map(r=>r.dtype).filter(Boolean))]);
+  fill('fRoot',   [...new Set(RAW.map(r=>r.root).filter(Boolean))]);
+  fill('fSev',    [...new Set(RAW.map(r=>r.sev).filter(Boolean))]);
+  fill('fStatus', [...new Set(RAW.map(r=>r.status).filter(Boolean))]);
 }
 function fill(id,vals){
   const sel=document.getElementById(id);
@@ -631,16 +647,26 @@ function fill(id,vals){
   sel.innerHTML=`<option value="">${first}</option>`+vals.map(v=>`<option>${v}</option>`).join('');
 }
 function applyFilters(){
-  const d=document.getElementById('fDiv').value;
-  const t=document.getElementById('fType').value;
-  const s=document.getElementById('fStatus').value;
-  FILTERED=RAW.filter(r=>
-    (!d||r.div===d)&&(!t||r.dtype===t)&&(!s||r.status===s)
+  const d  = document.getElementById('fDiv').value;
+  const g  = document.getElementById('fGender').value;
+  const c  = document.getElementById('fCat').value;
+  const t  = document.getElementById('fType').value;
+  const ro = document.getElementById('fRoot').value;
+  const sv = document.getElementById('fSev').value;
+  const s  = document.getElementById('fStatus').value;
+  FILTERED = RAW.filter(r=>
+    (!d  || r.div    === d)  &&
+    (!g  || r.gender === g)  &&
+    (!c  || r.cat    === c)  &&
+    (!t  || r.dtype  === t)  &&
+    (!ro || r.root   === ro) &&
+    (!sv || r.sev    === sv) &&
+    (!s  || r.status === s)
   );
   refresh();
 }
 function resetFilters(){
-  ['fDiv','fType','fStatus'].forEach(id=>document.getElementById(id).value='');
+  ['fDiv','fGender','fCat','fType','fRoot','fSev','fStatus'].forEach(id=>document.getElementById(id).value='');
   FILTERED=[...RAW];
   refresh();
 }
@@ -967,6 +993,7 @@ function addStockRow(key){
 // ── INIT ─────────────────────────────────────────────────────────────
 RAW=[...DEFAULT];
 FILTERED=[...RAW];
+populateFilters();
 refresh();
 buildStockTables();
 
