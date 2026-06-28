@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EG222 Stock Control Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+:root{
+  --bg:#0f2d4a;--surface:#0a2038;--surface2:#0d2840;--surface3:#112f4e;
+  --border:#1a3d5c;--accent:#e31d1a;--white:#fff;
+  --gray1:#e8eef4;--gray2:#8aacc8;--gray3:#4a7a9b;
+  --green:#00c853;--yellow:#ffc107;--blue:#4db8ff;
+  --sw:230px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--white);font-family:'Barlow',sans-serif;display:flex;min-height:100vh;}
+
+/* Animated background logos */
+.bg-logos-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.bg-logo{position:absolute;opacity:0.07;width:400px;height:400px;}
+.bg-logo-1{
+  top:5%;left:38%;
+  animation:floatLogo1 18s ease-in-out infinite;
+}
+.bg-logo-2{
+  top:45%;left:62%;
+  animation:floatLogo2 22s ease-in-out infinite;
+  width:300px;height:300px;
+  opacity:0.05;
+}
+.bg-logo-3{
+  top:-5%;left:58%;
+  animation:floatLogo3 26s ease-in-out infinite;
+  width:220px;height:220px;
+  opacity:0.04;
+}
+@keyframes floatLogo1{
+  0%{transform:translate(0,0) rotate(-5deg);}
+  33%{transform:translate(-30px,40px) rotate(0deg);}
+  66%{transform:translate(20px,-20px) rotate(-8deg);}
+  100%{transform:translate(0,0) rotate(-5deg);}
+}
+@keyframes floatLogo2{
+  0%{transform:translate(0,0) rotate(5deg);}
+  50%{transform:translate(40px,30px) rotate(-3deg);}
+  100%{transform:translate(0,0) rotate(5deg);}
+}
+@keyframes floatLogo3{
+  0%{transform:translate(0,0) rotate(-10deg);}
+  40%{transform:translate(-20px,50px) rotate(5deg);}
+  100%{transform:translate(0,0) rotate(-10deg);}
+}
+.content{position:relative;z-index:1;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;}
+
+.logo-area{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.logo-svg-wrap{margin-bottom:10px;}
+.logo-svg-wrap svg{display:block;}
+.logo-brand{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:5px;color:var(--white);line-height:1;}
+.logo-store{font-size:10px;color:var(--gray3);letter-spacing:1.5px;margin-top:6px;}
+
+/* Upload */
+.upload-wrap{margin:14px 14px 0;border:1px dashed var(--border);border-radius:3px;padding:12px;text-align:center;cursor:pointer;transition:border-color .2s;}
+.upload-wrap:hover{border-color:var(--accent);}
+.upload-wrap input{display:none;}
+.upload-icon{font-size:20px;margin-bottom:4px;}
+.upload-txt{font-size:9px;letter-spacing:1.5px;color:var(--gray3);font-weight:600;text-transform:uppercase;}
+.upload-ok{font-size:9px;color:var(--green);letter-spacing:1px;margin-top:5px;display:none;font-weight:700;}
+
+/* Filters */
+.filter-section{padding:14px 14px 0;}
+.filter-label{font-size:8px;letter-spacing:2.5px;color:var(--gray3);font-weight:700;text-transform:uppercase;margin-bottom:8px;}
+.filter-select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--gray2);font-family:'Barlow',sans-serif;font-size:11px;padding:7px 10px;border-radius:2px;outline:none;margin-bottom:8px;cursor:pointer;}
+.filter-select:focus{border-color:var(--accent);}
+.filter-reset{width:100%;background:transparent;border:1px solid var(--border);color:var(--gray3);font-family:'Barlow',sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;padding:7px;border-radius:2px;cursor:pointer;text-transform:uppercase;margin-top:2px;transition:all .2s;}
+.filter-reset:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Nav */
+.nav-wrap{padding:16px 0;flex:1;}
+.nav-lbl{font-size:8px;letter-spacing:3px;color:var(--gray3);font-weight:700;padding:0 18px 8px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:var(--gray2);font-size:12px;font-weight:500;transition:all .2s;border-left:3px solid transparent;}
+.nav-item:hover{color:var(--white);background:var(--surface2);}
+.nav-item.active{color:var(--white);border-left-color:var(--accent);background:var(--surface2);}
+
+.sidebar-foot{padding:14px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--gray3);line-height:1.8;margin-top:auto;flex-shrink:0;}
+.sidebar-foot strong{color:var(--gray2);}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* Topbar */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 26px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.tb-left{display:flex;align-items:center;gap:14px;}
+.tb-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+.tb-badge{background:var(--accent);color:var(--white);font-size:8px;font-weight:700;letter-spacing:2px;padding:3px 8px;border-radius:2px;}
+.tb-right{display:flex;align-items:center;gap:12px;}
+.store-block{text-align:right;}
+.store-nm{font-size:12px;font-weight:600;letter-spacing:.5px;}
+.store-mg{font-size:10px;color:var(--gray2);letter-spacing:.5px;}
+.report-btn{background:var(--accent);color:var(--white);border:none;padding:8px 18px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;border-radius:2px;text-transform:uppercase;transition:opacity .2s;}
+.report-btn:hover{opacity:.85;}
+
+/* Content */
+.content{padding:22px 26px;flex:1;}
+.page{display:none;}.page.active{display:block;}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:18px 18px 16px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--border);}
+.kpi.red::after{background:var(--accent);}
+.kpi.green::after{background:var(--green);}
+.kpi.yellow::after{background:var(--yellow);}
+.kpi.blue::after{background:var(--blue);}
+.kpi-icon{font-size:16px;margin-bottom:8px;}
+.kpi-lbl{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--gray2);text-transform:uppercase;margin-bottom:6px;}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:900;line-height:1;}
+.kpi-val.red{color:var(--accent);}
+.kpi-val.green{color:var(--green);}
+.kpi-val.yellow{color:var(--yellow);}
+.kpi-val.blue{color:var(--blue);}
+.kpi-sub{font-size:10px;color:var(--gray3);margin-top:5px;}
+.kpi-pending{font-size:9px;color:var(--gray3);margin-top:6px;font-style:italic;}
+
+/* Charts Grid */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.grid-full{margin-bottom:12px;}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:18px;}
+.ch-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.ch-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray1);}
+.ch-type{font-size:9px;letter-spacing:1.5px;color:var(--gray3);font-weight:600;}
+.ch-wrap{position:relative;height:200px;}
+.ch-wrap.tall{height:240px;}
+.ch-wrap.xtall{height:280px;}
+
+/* Table */
+.tbl-box{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:18px;margin-bottom:12px;}
+.tbl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.search-inp{background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:7px 12px;color:var(--white);font-family:'Barlow',sans-serif;font-size:11px;width:220px;outline:none;}
+.search-inp:focus{border-color:var(--accent);}
+.search-inp::placeholder{color:var(--gray3);}
+table{width:100%;border-collapse:collapse;}
+thead tr{border-bottom:2px solid var(--border);}
+thead th{padding:8px 10px;text-align:left;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--gray2);text-transform:uppercase;white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:hover{background:var(--surface2);}
+tbody td{padding:9px 10px;font-size:11px;color:var(--gray1);}
+.td-no{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:var(--accent);letter-spacing:1px;}
+.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.b-app{background:rgba(227,29,26,.15);color:#ff6b68;border:1px solid rgba(227,29,26,.3);}
+.b-ftw{background:rgba(0,200,83,.15);color:var(--green);border:1px solid rgba(0,200,83,.3);}
+.b-acc{background:rgba(255,193,7,.15);color:var(--yellow);border:1px solid rgba(255,193,7,.3);}
+.b-open{color:var(--accent);font-size:9px;font-weight:700;letter-spacing:1px;}
+.b-inprog{color:var(--yellow);font-size:9px;font-weight:700;letter-spacing:1px;}
+.b-closed{color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;}
+.b-rtv{color:var(--blue);font-size:9px;font-weight:700;letter-spacing:1px;}
+.b-sold{color:var(--gray2);font-size:9px;font-weight:700;letter-spacing:1px;}
+.sev-h{color:var(--accent);font-size:9px;font-weight:700;}
+.sev-m{color:var(--yellow);font-size:9px;font-weight:700;}
+.sev-l{color:var(--gray2);font-size:9px;font-weight:700;}
+.photo-thumb{width:38px;height:38px;object-fit:cover;border-radius:2px;border:1px solid var(--border);}
+.photo-ph{width:38px;height:38px;background:var(--surface2);border:1px dashed var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--gray3);}
+.dash{color:var(--gray3);font-size:10px;}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center;}
+.overlay.show{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:3px;padding:28px;max-width:580px;width:92%;}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;letter-spacing:3px;text-transform:uppercase;margin-bottom:18px;}
+.modal-body{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:18px;font-size:13px;line-height:2.1;color:var(--gray1);}
+.modal-body strong{color:var(--accent);}
+.modal-acts{display:flex;gap:10px;margin-top:16px;}
+.btn-copy{background:var(--accent);color:var(--white);border:none;padding:9px 18px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;border-radius:2px;text-transform:uppercase;}
+.btn-cls{background:transparent;color:var(--gray2);border:1px solid var(--border);padding:9px 18px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;border-radius:2px;text-transform:uppercase;}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* Mobile Responsive */
+@media(max-width:768px){
+  :root{--sw:0px;}
+  .sidebar{transform:translateX(-100%);transition:transform .3s;}
+  .sidebar.open{transform:translateX(0);width:240px;}
+  .main{margin-left:0;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .grid-2{grid-template-columns:1fr!important;}
+  .topbar{padding:0 14px;}
+  .tb-title{font-size:14px;}
+  .store-block{display:none;}
+  .content{padding:14px;}
+  .hamburger{display:flex!important;}
+}
+.hamburger{display:none;background:transparent;border:none;color:var(--gray2);font-size:20px;cursor:pointer;margin-right:8px;}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="logo-area">
+    <div class="logo-svg-wrap">
+      <!-- Adidas 3-Stripe Badge Logo -->
+      <svg width="64" height="52" viewBox="0 0 64 52" xmlns="http://www.w3.org/2000/svg">
+        <!-- Left stripe: shortest -->
+        <polygon points="0,52 14,52 20,32 6,32" fill="white"/>
+        <!-- Middle stripe: medium -->
+        <polygon points="22,52 36,52 46,12 32,12" fill="white"/>
+        <!-- Right stripe: tallest -->
+        <polygon points="44,52 58,52 64,0 50,0" fill="white"/>
+      </svg>
+    </div>
+    <div class="logo-brand">ADIDAS</div>
+    <div class="logo-store">DAMAGE TRACKER · EG222</div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-wrap" onclick="document.getElementById('xlFile').click()">
+    <input type="file" id="xlFile" accept=".xlsx,.xls" onchange="loadFile(this)">
+    <div class="upload-icon">📂</div>
+    <div class="upload-txt">Upload Excel Data</div>
+    <div class="upload-ok" id="upOk">✓ DATA LOADED</div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-section">
+    <div class="filter-label">Filters</div>
+    <select class="filter-select" id="fDiv" onchange="applyFilters()">
+      <option value="">All Divisions</option>
+    </select>
+    <select class="filter-select" id="fGender" onchange="applyFilters()">
+      <option value="">All Genders</option>
+    </select>
+    <select class="filter-select" id="fCat" onchange="applyFilters()">
+      <option value="">All Categories</option>
+    </select>
+    <select class="filter-select" id="fType" onchange="applyFilters()">
+      <option value="">All Damage Types</option>
+    </select>
+    <select class="filter-select" id="fRoot" onchange="applyFilters()">
+      <option value="">All Root Causes</option>
+    </select>
+    <select class="filter-select" id="fSev" onchange="applyFilters()">
+      <option value="">All Severities</option>
+    </select>
+    <select class="filter-select" id="fStatus" onchange="applyFilters()">
+      <option value="">All Status</option>
+    </select>
+    <button class="filter-reset" onclick="resetFilters()">✕ Reset Filters</button>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-wrap">
+    <div class="nav-lbl">Pages</div>
+    <div class="nav-lbl" style="margin-top:12px;">Damage</div>
+    <div class="nav-item active" onclick="showPage('overview',this)">📊 Overview</div>
+    <div class="nav-item" onclick="showPage('items',this)">📦 All Items</div>
+    <div class="nav-item" onclick="showPage('prevention',this)">⚠️ Prevention</div>
+    <div class="nav-lbl" style="margin-top:12px;">Stock Issues</div>
+    <div class="nav-item" onclick="showPage('discrepancy',this)">🔄 Discrepancy</div>
+    <div class="nav-item" onclick="showPage('dcexcess',this)">📥 DC Excess</div>
+    <div class="nav-item" onclick="showPage('eg202',this)">🔀 Excess EG202</div>
+    <div class="nav-item" onclick="showPage('nosystem',this)">❌ Not on System</div>
+  </div>
+
+  <div class="sidebar-foot">
+    <strong>EG222 · Miami</strong><br>
+    Store Manager: Ehab Hussein
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a3d5c;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;color:#8aacc8;">BUILT BY MOHAMED ABDELAZIZ</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <!-- Animated Background Logos -->
+  <div class="bg-logos-wrap">
+    <svg class="bg-logo bg-logo-1" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="0,160 46,160 72,0 26,0" fill="white"/>
+      <polygon points="70,160 116,160 142,0 96,0" fill="white"/>
+      <polygon points="135,160 181,160 200,80 154,80" fill="white"/>
+    </svg>
+    <svg class="bg-logo bg-logo-2" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="0,160 46,160 72,0 26,0" fill="white"/>
+      <polygon points="70,160 116,160 142,0 96,0" fill="white"/>
+      <polygon points="135,160 181,160 200,80 154,80" fill="white"/>
+    </svg>
+    <svg class="bg-logo bg-logo-3" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="0,160 46,160 72,0 26,0" fill="white"/>
+      <polygon points="70,160 116,160 142,0 96,0" fill="white"/>
+      <polygon points="135,160 181,160 200,80 154,80" fill="white"/>
+    </svg>
+  </div>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-left">
+      <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+      <div class="tb-title">EG222 Stock Control</div>
+      <div class="tb-badge">LIVE</div>
+    </div>
+    <div class="tb-right">
+      <div class="store-block">
+        <div class="store-nm">EG222 · MIAMI</div>
+        <div class="store-mg">Store Manager: Ehab Hussein</div>
+      </div>
+      <button class="report-btn" style="background:transparent;border:1px solid var(--border);color:var(--gray2);margin-right:4px;" onclick="toggleMode()" id="modeBtn">☀️</button>
+      <button class="report-btn" onclick="openReport()">⚡ Auto Report</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── OVERVIEW PAGE ── -->
+    <div class="page active" id="page-overview">
+
+      <!-- KPI Cards Row 1: Damage -->
+      <div style="font-size:9px;letter-spacing:2px;color:var(--gray3);font-weight:700;text-transform:uppercase;margin-bottom:8px;">📦 Damage</div>
+      <div class="kpi-grid" style="margin-bottom:12px;">
+        <div class="kpi red">
+          <div class="kpi-icon">📦</div>
+          <div class="kpi-lbl">Total Damage</div>
+          <div class="kpi-val red" id="kTotalDmg">—</div>
+          <div class="kpi-sub">Items registered</div>
+        </div>
+        <div class="kpi yellow">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-lbl">Total Cost Impact</div>
+          <div class="kpi-val yellow" id="kTotalCost" style="font-size:22px;margin-top:4px;">—</div>
+          <div class="kpi-pending" id="kCostPend">Add Cost column to activate</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-icon">🔴</div>
+          <div class="kpi-lbl">Open Cases</div>
+          <div class="kpi-val red" id="kOpen" style="font-size:28px;margin-top:4px;">—</div>
+          <div class="kpi-pending" id="kOpenPend">Add Status column to activate</div>
+        </div>
+        <div class="kpi blue">
+          <div class="kpi-icon">📈</div>
+          <div class="kpi-lbl">Avg Cost / Item</div>
+          <div class="kpi-val blue" id="kAvgCost" style="font-size:22px;margin-top:4px;">—</div>
+          <div class="kpi-pending" id="kAvgPend">Add Cost column to activate</div>
+        </div>
+        <div class="kpi" style="border-left:2px solid var(--accent);">
+          <div class="kpi-icon">🎯</div>
+          <div class="kpi-lbl">Top Damage Category</div>
+          <div class="kpi-val" id="kTopCat" style="font-size:16px;margin-top:4px;color:var(--accent);">—</div>
+          <div class="kpi-sub" id="kTopCatN">— cases</div>
+        </div>
+        <div class="kpi" style="border-left:2px solid var(--yellow);">
+          <div class="kpi-icon">🏥</div>
+          <div class="kpi-lbl">Damage Score</div>
+          <div class="kpi-val" id="kDmgScore" style="font-size:28px;margin-top:4px;color:var(--yellow);">—</div>
+          <div class="kpi-sub">Store health indicator</div>
+        </div>
+      </div>
+
+      <!-- KPI Cards Row 2: Stock Issues Summary -->
+      <div style="font-size:9px;letter-spacing:2px;color:var(--gray3);font-weight:700;text-transform:uppercase;margin-bottom:8px;">⚠️ Stock Issues</div>
+      <div class="kpi-grid" style="margin-bottom:20px;">
+        <div class="kpi" style="border-left:2px solid #ffc107;">
+          <div class="kpi-icon">🔄</div>
+          <div class="kpi-lbl">Discrepancy</div>
+          <div class="kpi-val yellow" id="kDisc" style="font-size:34px;">4</div>
+          <div class="kpi-sub">Items not on system</div>
+        </div>
+        <div class="kpi" style="border-left:2px solid #4db8ff;">
+          <div class="kpi-icon">📥</div>
+          <div class="kpi-lbl">DC Excess</div>
+          <div class="kpi-val blue" id="kDcex" style="font-size:34px;">1</div>
+          <div class="kpi-sub">Items from DC</div>
+        </div>
+        <div class="kpi" style="border-left:2px solid #00c853;">
+          <div class="kpi-icon">🔀</div>
+          <div class="kpi-lbl">Excess EG202</div>
+          <div class="kpi-val green" id="kEg202" style="font-size:34px;">5</div>
+          <div class="kpi-sub">Items from EG202</div>
+        </div>
+        <div class="kpi" style="border-left:2px solid #e31d1a;">
+          <div class="kpi-icon">❌</div>
+          <div class="kpi-lbl">Not on System</div>
+          <div class="kpi-val red" id="kNosys" style="font-size:34px;">2</div>
+          <div class="kpi-sub">Items unregistered</div>
+        </div>
+      </div>
+
+      <!-- Row 1: Dept + Damage Type -->
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">📊 Damage by Department</div><div class="ch-type">Clustered Bar</div></div>
+          <div class="ch-wrap tall"><canvas id="cDept"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">🍩 Damage Type</div><div class="ch-type">Donut</div></div>
+          <div class="ch-wrap tall"><canvas id="cType"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Row 2: Root Cause + Status -->
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">🔍 Root Cause Analysis</div><div class="ch-type">Bar Chart</div></div>
+          <div class="ch-wrap"><canvas id="cRoot"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">🥧 Status Distribution</div><div class="ch-type">Donut</div></div>
+          <div class="ch-wrap"><canvas id="cStatus"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Row 3: Top Products + Stock Comparison -->
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">🏆 Top Damaged Products</div><div class="ch-type">Horizontal Bar</div></div>
+          <div class="ch-wrap xtall"><canvas id="cTop10"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">⚠️ Stock Issues Overview</div><div class="ch-type">Bar Chart</div></div>
+          <div class="ch-wrap xtall"><canvas id="cStockSummary"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Row 4: Severity + Gender + Trend -->
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">🔥 Severity Distribution</div><div class="ch-type">Donut</div></div>
+          <div class="ch-wrap"><canvas id="cSeverity"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">👥 Damage by Gender</div><div class="ch-type">Donut</div></div>
+          <div class="ch-wrap"><canvas id="cGender2"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-full" style="margin-bottom:12px;">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">📈 Damage Trend</div><div class="ch-type">Line Chart</div></div>
+          <div class="ch-wrap" style="height:180px;"><canvas id="cTrend"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── ITEMS PAGE ── -->
+    <div class="page" id="page-items">
+      <div class="tbl-box">
+        <div class="tbl-head">
+          <div class="ch-title">📦 All Damage Items</div>
+          <input class="search-inp" type="text" placeholder="🔍 Search..." oninput="searchTable(this.value)">
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Item No.</th><th>Description</th><th>Size</th><th>Qty</th>
+                <th>Division</th><th>Gender</th><th>Category</th>
+                <th>Damage Type</th><th>Root Cause</th>
+                <th>Status</th><th>Severity</th><th>Cost</th><th>Photo</th>
+              </tr>
+            </thead>
+            <tbody id="tBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PREVENTION PAGE ── -->
+    <div class="page" id="page-prevention">
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">⚠️ Top Risk — Root Causes</div><div class="ch-type">Analysis</div></div>
+          <div id="prevInsights" style="margin-top:4px;"></div>
+        </div>
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">📊 Damage Type Risk</div><div class="ch-type">Bar</div></div>
+          <div class="ch-wrap"><canvas id="cPrevType"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="ch-head"><div class="ch-title">📋 Action Needed — Open & In Progress</div><div class="ch-type">Table</div></div>
+        <div style="overflow-x:auto;"><table><thead><tr><th>Item No.</th><th>Description</th><th>Damage Type</th><th>Root Cause</th><th>Status</th><th>Cost</th></tr></thead><tbody id="actionTable"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ── DISCREPANCY PAGE ── -->
+    <div class="page" id="page-discrepancy">
+      <div class="kpi-grid" style="margin-bottom:16px;">
+        <div class="kpi yellow"><div class="kpi-icon">🔄</div><div class="kpi-lbl">Total Items</div><div class="kpi-val yellow" id="dDiscTotal">—</div></div>
+        <div class="kpi"><div class="kpi-icon">📦</div><div class="kpi-lbl">Most Common</div><div class="kpi-val" id="dDiscTop" style="font-size:16px;margin-top:4px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👟</div><div class="kpi-lbl">Footwear</div><div class="kpi-val blue" id="dDiscFtw" style="font-size:28px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👕</div><div class="kpi-lbl">Apparel</div><div class="kpi-val green" id="dDiscApp" style="font-size:28px;">—</div></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">📊 By Division</div><div class="ch-type">Bar</div></div>
+          <div class="ch-wrap"><canvas id="cDiscDiv"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="ch-head"><div class="ch-title">🔄 Items</div><div class="ch-type">Horizontal Bar</div></div>
+          <div class="ch-wrap"><canvas id="cDiscItems"></canvas></div>
+        </div>
+      </div>
+      <div class="tbl-box">
+        <div class="tbl-head">
+          <div class="ch-title">🔄 Discrepancy — بضاعة مش على النظام</div>
+          <button class="report-btn" style="font-size:10px;padding:6px 14px;" onclick="addStockRow('discrepancy')">+ Add Item</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table><thead><tr><th>Item No.</th><th>Description</th><th>Size</th><th>Qty</th><th>Notes</th></tr></thead>
+          <tbody id="tDiscrepancy"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DC EXCESS PAGE ── -->
+    <div class="page" id="page-dcexcess">
+      <div class="kpi-grid" style="margin-bottom:16px;">
+        <div class="kpi blue"><div class="kpi-icon">📥</div><div class="kpi-lbl">Total Items</div><div class="kpi-val blue" id="dDcexTotal">—</div></div>
+        <div class="kpi"><div class="kpi-icon">📦</div><div class="kpi-lbl">Most Common</div><div class="kpi-val" id="dDcexTop" style="font-size:16px;margin-top:4px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👟</div><div class="kpi-lbl">Footwear</div><div class="kpi-val blue" id="dDcexFtw" style="font-size:28px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👕</div><div class="kpi-lbl">Apparel</div><div class="kpi-val green" id="dDcexApp" style="font-size:28px;">—</div></div>
+      </div>
+      <div class="tbl-box">
+        <div class="tbl-head">
+          <div class="ch-title">📥 DC Excess — زيادات من المخزن الرئيسي</div>
+          <button class="report-btn" style="font-size:10px;padding:6px 14px;" onclick="addStockRow('dcexcess')">+ Add Item</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table><thead><tr><th>Item No.</th><th>Description</th><th>Size</th><th>Qty</th><th>Notes</th></tr></thead>
+          <tbody id="tDcexcess"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── EXCESS EG202 PAGE ── -->
+    <div class="page" id="page-eg202">
+      <div class="kpi-grid" style="margin-bottom:16px;">
+        <div class="kpi green"><div class="kpi-icon">🔀</div><div class="kpi-lbl">Total Items</div><div class="kpi-val green" id="dEg202Total">—</div></div>
+        <div class="kpi"><div class="kpi-icon">📦</div><div class="kpi-lbl">Most Common</div><div class="kpi-val" id="dEg202Top" style="font-size:16px;margin-top:4px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👟</div><div class="kpi-lbl">Footwear</div><div class="kpi-val blue" id="dEg202Ftw" style="font-size:28px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👕</div><div class="kpi-lbl">Apparel</div><div class="kpi-val green" id="dEg202App" style="font-size:28px;">—</div></div>
+      </div>
+      <div class="tbl-box">
+        <div class="tbl-head">
+          <div class="ch-title">🔀 Excess EG202 — زيادات من فرع EG202</div>
+          <button class="report-btn" style="font-size:10px;padding:6px 14px;" onclick="addStockRow('eg202')">+ Add Item</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table><thead><tr><th>Item No.</th><th>Description</th><th>Size</th><th>Qty</th><th>Notes</th></tr></thead>
+          <tbody id="tEg202"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOT ON SYSTEM PAGE ── -->
+    <div class="page" id="page-nosystem">
+      <div class="kpi-grid" style="margin-bottom:16px;">
+        <div class="kpi red"><div class="kpi-icon">❌</div><div class="kpi-lbl">Total Items</div><div class="kpi-val red" id="dNosysTotal">—</div></div>
+        <div class="kpi"><div class="kpi-icon">📦</div><div class="kpi-lbl">Most Common</div><div class="kpi-val" id="dNosysTop" style="font-size:16px;margin-top:4px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👟</div><div class="kpi-lbl">Footwear</div><div class="kpi-val blue" id="dNosysFtw" style="font-size:28px;">—</div></div>
+        <div class="kpi"><div class="kpi-icon">👕</div><div class="kpi-lbl">Apparel</div><div class="kpi-val green" id="dNosysApp" style="font-size:28px;">—</div></div>
+      </div>
+      <div class="tbl-box">
+        <div class="tbl-head">
+          <div class="ch-title">❌ Not on System — بضاعة مش على النظام</div>
+          <button class="report-btn" style="font-size:10px;padding:6px 14px;" onclick="addStockRow('nosystem')">+ Add Item</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table><thead><tr><th>Item No.</th><th>Description</th><th>Size</th><th>Qty</th><th>Notes</th></tr></thead>
+          <tbody id="tNosystem"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Image Popup -->
+<div class="overlay" id="imgOverlay" onclick="closeImg()" style="z-index:1001;">
+  <div style="position:relative;max-width:90vw;max-height:90vh;">
+    <img id="imgPopup" src="" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:4px;border:2px solid var(--border);">
+    <button onclick="closeImg()" style="position:absolute;top:-14px;right:-14px;background:var(--accent);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title">⚡ Auto Report</div>
+    <div class="modal-body" id="reportBody"></div>
+    <div class="modal-acts">
+      <button class="btn-copy" onclick="copyReport()">📋 Copy</button>
+      <button class="btn-cls" onclick="closeReport()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+let RAW = [];
+let FILTERED = [];
+let charts = {};
+
+const DEFAULT = [
+  {no:'DP2361',desc:'W E LIN SLIM T',size:'M',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'DP2361',desc:'W E LIN SLIM T',size:'M',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'DP2361',desc:'W E LIN SLIM T',size:'L',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'DU0404',desc:'E LIN TEE',size:'S',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'FK3189',desc:'DAD CAP BOS',size:'OSFM',qty:1,div:'ACCESSORIES',gender:'MEN',cat:'TRAINING',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GD2314',desc:'TREFOIL TEE',size:'38',qty:1,div:'APPAREL',gender:'WOMEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GD2314',desc:'TREFOIL TEE',size:'38',qty:1,div:'APPAREL',gender:'WOMEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GD2314',desc:'TREFOIL TEE',size:'36',qty:1,div:'APPAREL',gender:'WOMEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GK9120',desc:'M BL SJ T',size:'S',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GK9120',desc:'M BL SJ T',size:'XS',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GL3735',desc:'M 3S SJ T',size:'M',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR',dtype:'قطع في كم التيشرت',root:'Customer Handling',sev:'Medium',status:'OPEN',cost:'',img:''},
+  {no:'GN4069',desc:'G BL T',size:'170',qty:1,div:'APPAREL',gender:'KIDS',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GN4069',desc:'G BL T',size:'128',qty:1,div:'APPAREL',gender:'KIDS',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'GW6801',desc:'OZWEEGO CELOX W',size:'4',qty:1,div:'FOOTWEAR',gender:'WOMEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'H67030',desc:'W ENERGIZE TS',size:'XS',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'H67030',desc:'W ENERGIZE TS',size:'S',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'HA0912',desc:'M SOCCER G T',size:'S',qty:1,div:'APPAREL',gender:'MEN',cat:'FOOTBALL GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'HA0912',desc:'M SOCCER G T',size:'M',qty:1,div:'APPAREL',gender:'MEN',cat:'FOOTBALL GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'HA0912',desc:'M SOCCER G T',size:'M',qty:1,div:'APPAREL',gender:'MEN',cat:'FOOTBALL GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'HF1950',desc:'I FI 3S JOG FT',size:'68',qty:1,div:'APPAREL',gender:'INFANTS',cat:'SPORTSWEAR',dtype:'قطع بسيط في التيشرت',root:'',sev:'LOW',status:'OPEN',cost:'',img:''},
+  {no:'HQ8710',desc:'CAMPUS 00s',size:'7',qty:1,div:'FOOTWEAR',gender:'MEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'HQ8710',desc:'CAMPUS 00s',size:'8',qty:1,div:'FOOTWEAR',gender:'MEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'HQ8710',desc:'CAMPUS 00s',size:'8',qty:1,div:'FOOTWEAR',gender:'MEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'IA0972',desc:'MESSI CLB',size:'5',qty:1,div:'ACCESSORIES',gender:'MEN',cat:'FOOTBALL LICENSED',dtype:'قطع في الكره',root:'Customer Handling',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'IC6748',desc:'M 3S FT TT TS',size:'M',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR',dtype:'بدون سوسته',root:'STS',sev:'LOW',status:'OPEN',cost:'',img:''},
+  {no:'II3179',desc:'FLOWER HOODIE',size:'L',qty:1,div:'APPAREL',gender:'WOMEN',cat:'ORIGINALS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'II6072',desc:'W VIBAOP TEE',size:'XL',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR GRAPHICS',dtype:'قطع في التيشرت',root:'IN STORE',sev:'Medium',status:'OPEN',cost:'',img:''},
+  {no:'II6072',desc:'W VIBAOP TEE',size:'M',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'II6072',desc:'W VIBAOP TEE',size:'M',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR GRAPHICS',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'IL8292',desc:'M VAL JKT U',size:'M',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR',dtype:'قطع في زرار',root:'IN STORE',sev:'Medium',status:'OPEN',cost:'',img:''},
+  {no:'IN3310',desc:'M FI 3S PT',size:'M',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR',dtype:'قطع في جيب البنطلون',root:'STS',sev:'Medium',status:'OPEN',cost:'',img:''},
+  {no:'IS2642',desc:'G BL T',size:'128',qty:1,div:'APPAREL',gender:'KIDS',cat:'SPORTSWEAR GRAPHICS',dtype:'قطع بسيط في كم التيشرت',root:'IN STORE',sev:'LOW',status:'OPEN',cost:'',img:''},
+  {no:'JE8934',desc:'M BL SJ T',size:'L',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR GRAPHICS',dtype:'قطع في التيشرت',root:'IN STORE',sev:'Medium',status:'OPEN',cost:'',img:''},
+  {no:'JJ4760',desc:'W Z.N.E. OH HD',size:'S',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'JJ4760',desc:'W Z.N.E. OH HD',size:'L',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'JJ4760',desc:'W Z.N.E. OH HD',size:'M',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'JJ4760',desc:'W Z.N.E. OH HD',size:'M',qty:1,div:'APPAREL',gender:'WOMEN',cat:'SPORTSWEAR',dtype:'تغيير لون',root:'Sun Exposure',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'JL5964',desc:'AL AHLY BALL',size:'5',qty:1,div:'ACCESSORIES',gender:'MEN',cat:'FOOTBALL GENERIC',dtype:'قطع في الكره',root:'Customer Handling',sev:'HIGH',status:'OPEN',cost:'',img:''},
+  {no:'JM6460',desc:'M CHEESE T',size:'L',qty:1,div:'APPAREL',gender:'MEN',cat:'SPORTSWEAR GRAPHICS',dtype:'قطع في التيشرت',root:'IN STORE',sev:'Medium',status:'OPEN',cost:'',img:''},
+  {no:'JX1755',desc:'M BTC GFX LS T',size:'XL',qty:1,div:'APPAREL',gender:'MEN',cat:'GOLF GRAPHICS',dtype:'قطع بسيط في التيشرت من الجانب',root:'IN STORE',sev:'LOW',status:'OPEN',cost:'',img:''}
+];
+
+// ── HELPERS ──────────────────────────────────────────────────────────
+const countBy = (arr,k) => arr.reduce((a,r)=>{const v=r[k]||'—';a[v]=(a[v]||0)+1;return a},{});
+const topOf   = obj => Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+const RED='#e31d1a',GREEN='#00c853',YELLOW='#ffc107',BLUE='#2196f3',GRAY='#333';
+const PALETTE = [RED,'#4db8ff',YELLOW,RED,'#4db8ff',YELLOW,RED,'#4db8ff',YELLOW,RED];
+const tooltipCfg = {backgroundColor:'#0a2038',borderColor:'#1a3d5c',borderWidth:1,titleColor:'#fff',bodyColor:'#8aacc8'};
+const baseOpts = {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:tooltipCfg}};
+
+// ── FILE UPLOAD ──────────────────────────────────────────────────────
+function loadFile(input){
+  const f = input.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result,{type:'binary'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws);
+    RAW = rows.map(r=>({
+      no:   r['Item No.']||r['item_no']||'',
+      desc: r['Item Description']||r['desc']||'',
+      size: r['Size Description']||r['size']||'',
+      qty:  +(r['Quantity']||r['qty']||1),
+      div:  (r['div']||r['Division']||'').replace('/HARDWARE','').trim(),
+      gender: r['gender']||r['Gender']||'',
+      cat:  r['cat']||r['Category']||'',
+      dtype:r['Damage Type']||r['damage_type']||'',
+      root: r['Root Cause']||r['root_cause']||'',
+      status:r['Status']||r['status']||'',
+      sev:  r['Severity']||r['severity']||'',
+      cost: r['Cost']||r['cost']||'',
+      img:  r['Image']||r['image']||'',
+    }));
+    document.getElementById('upOk').style.display='block';
+    populateFilters();
+    FILTERED=[...RAW];
+    refresh();
+  };
+  reader.readAsBinaryString(f);
+}
+
+// ── FILTERS ──────────────────────────────────────────────────────────
+function populateFilters(){
+  fill('fDiv',    [...new Set(RAW.map(r=>r.div).filter(Boolean))]);
+  fill('fGender', [...new Set(RAW.map(r=>r.gender).filter(Boolean))]);
+  fill('fCat',    [...new Set(RAW.map(r=>r.cat).filter(Boolean))]);
+  fill('fType',   [...new Set(RAW.map(r=>r.dtype).filter(Boolean))]);
+  fill('fRoot',   [...new Set(RAW.map(r=>r.root).filter(Boolean))]);
+  fill('fSev',    [...new Set(RAW.map(r=>r.sev).filter(Boolean))]);
+  fill('fStatus', [...new Set(RAW.map(r=>r.status).filter(Boolean))]);
+}
+function fill(id,vals){
+  const sel=document.getElementById(id);
+  const first=sel.options[0].text;
+  sel.innerHTML=`<option value="">${first}</option>`+vals.map(v=>`<option>${v}</option>`).join('');
+}
+function applyFilters(){
+  const d  = document.getElementById('fDiv').value;
+  const g  = document.getElementById('fGender').value;
+  const c  = document.getElementById('fCat').value;
+  const t  = document.getElementById('fType').value;
+  const ro = document.getElementById('fRoot').value;
+  const sv = document.getElementById('fSev').value;
+  const s  = document.getElementById('fStatus').value;
+  FILTERED = RAW.filter(r=>
+    (!d  || r.div    === d)  &&
+    (!g  || r.gender === g)  &&
+    (!c  || r.cat    === c)  &&
+    (!t  || r.dtype  === t)  &&
+    (!ro || r.root   === ro) &&
+    (!sv || r.sev    === sv) &&
+    (!s  || r.status === s)
+  );
+  refresh();
+}
+function resetFilters(){
+  ['fDiv','fGender','fCat','fType','fRoot','fSev','fStatus'].forEach(id=>document.getElementById(id).value='');
+  FILTERED=[...RAW];
+  refresh();
+}
+
+// ── REFRESH ──────────────────────────────────────────────────────────
+function refresh(){
+  updateKPIs();
+  killCharts();
+  buildCharts();
+  buildTable();
+  buildPrevention();
+}
+
+function killCharts(){Object.values(charts).forEach(c=>c.destroy());charts={};}
+
+// ── KPIs ─────────────────────────────────────────────────────────────
+function updateKPIs(){
+  const D=FILTERED;
+  animateKPI('kTotalDmg', D.length);
+
+  const costs=D.map(r=>parseFloat(r.cost)).filter(v=>!isNaN(v)&&v>0);
+  if(costs.length){
+    const tot=costs.reduce((a,b)=>a+b,0);
+    animateKPI('kTotalCost', tot, 'EGP ', '');
+    document.getElementById('kTotalCost').style.fontSize='18px';
+    document.getElementById('kCostPend').style.display='none';
+    animateKPI('kAvgCost', Math.round(tot/costs.length), 'EGP ', '');
+    document.getElementById('kAvgCost').style.fontSize='18px';
+    document.getElementById('kAvgPend').style.display='none';
+  }else{
+    document.getElementById('kTotalCost').textContent='—';
+    document.getElementById('kCostPend').style.display='block';
+    document.getElementById('kAvgCost').textContent='—';
+    document.getElementById('kAvgPend').style.display='block';
+  }
+
+  const statuses=D.map(r=>(r.status||'').toUpperCase());
+  const openCount=statuses.filter(s=>s.includes('OPEN')||s.includes('PENDING')||s.includes('IN PROGRESS')).length;
+  if(statuses.some(s=>s)){
+    animateKPI('kOpen', openCount);
+    document.getElementById('kOpenPend').style.display='none';
+  }else{
+    document.getElementById('kOpen').textContent='—';
+    document.getElementById('kOpenPend').style.display='block';
+  }
+
+  // Top Category KPI
+  const catC = countBy(D,'cat');
+  const topCat = topOf(catC)[0];
+  if(topCat && topCat[0]!=='—'){
+    document.getElementById('kTopCat').textContent = topCat[0];
+    document.getElementById('kTopCatN').textContent = topCat[1]+' cases';
+  }
+
+  // Damage Score
+  const score = calcDamageScore(D);
+  animateKPI('kDmgScore', score, '', '%');
+  const scoreEl = document.getElementById('kDmgScore');
+  if(scoreEl) scoreEl.style.color = score>=80?'var(--green)':score>=60?'var(--yellow)':'var(--accent)';
+}
+
+// ── CHARTS ───────────────────────────────────────────────────────────
+function buildCharts(){
+  const D=FILTERED;
+  const sc={x:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},y:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}};
+  const scNoGridX={x:{ticks:{color:'#888',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}};
+
+  // Damage by Department
+  const deptC=countBy(D,'div');
+  const deptS=topOf(deptC);
+  charts.dept=new Chart(document.getElementById('cDept'),{
+    type:'bar',
+    data:{labels:deptS.map(e=>e[0]),datasets:[{data:deptS.map(e=>e[1]),backgroundColor:deptS.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:3}]},
+    options:{...baseOpts,scales:sc}
+  });
+
+  // Damage Type Donut
+  const typeC=countBy(D,'dtype');
+  const typeS=topOf(typeC);
+  const hasType=typeS.some(e=>e[0]!=='—');
+  charts.type=new Chart(document.getElementById('cType'),{
+    type:'doughnut',
+    data:{
+      labels:hasType?typeS.map(e=>e[0]):['No Data Yet'],
+      datasets:[{data:hasType?typeS.map(e=>e[1]):[1],backgroundColor:hasType?typeS.map((_,i)=>PALETTE[i%PALETTE.length]):['#2a2a2a'],borderWidth:0}]
+    },
+    options:{...baseOpts,cutout:'62%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#888',font:{size:10},boxWidth:10,padding:10}},tooltip:tooltipCfg}}
+  });
+
+  // Root Cause
+  const rootC=countBy(D,'root');
+  const rootS=topOf(rootC);
+  const hasRoot=rootS.some(e=>e[0]!=='—');
+  charts.root=new Chart(document.getElementById('cRoot'),{
+    type:'bar',
+    data:{labels:hasRoot?rootS.map(e=>e[0]):['No Data Yet'],datasets:[{data:hasRoot?rootS.map(e=>e[1]):[0],backgroundColor:hasRoot?rootS.map((_,i)=>PALETTE[i%PALETTE.length]):['#2a2a2a'],borderRadius:3}]},
+    options:{...baseOpts,scales:sc}
+  });
+
+  // Status Donut
+  const statC=countBy(D,'status');
+  const statS=topOf(statC);
+  const hasStat=statS.some(e=>e[0]!=='—');
+  const statColors={'OPEN':RED,'IN PROGRESS':YELLOW,'CLOSED':GREEN,'RTV':BLUE,'SOLD':'#888'};
+  charts.status=new Chart(document.getElementById('cStatus'),{
+    type:'doughnut',
+    data:{
+      labels:hasStat?statS.map(e=>e[0]):['No Data Yet'],
+      datasets:[{data:hasStat?statS.map(e=>e[1]):[1],backgroundColor:hasStat?statS.map(e=>statColors[e[0].toUpperCase()]||GRAY):['#2a2a2a'],borderWidth:0}]
+    },
+    options:{...baseOpts,cutout:'62%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#888',font:{size:10},boxWidth:10,padding:10}},tooltip:tooltipCfg}}
+  });
+
+  // Top 10 Products
+  const prodC=countBy(D,'desc');
+  const top10=topOf(prodC).slice(0,10).reverse();
+  charts.top10=new Chart(document.getElementById('cTop10'),{
+    type:'bar',
+    data:{labels:top10.map(e=>e[0]),datasets:[{data:top10.map(e=>e[1]),backgroundColor:top10.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:3}]},
+    options:{...baseOpts,indexAxis:'y',scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},y:{ticks:{color:'#888',font:{size:10}},grid:{display:false}}}}
+  });
+
+  // Severity Donut
+  const sevC = countBy(D,'sev');
+  const sevS = topOf(sevC).filter(e=>e[0]!=='—');
+  const getSevColor = (s) => {
+    const u = (s||'').toUpperCase();
+    if(u.includes('HIGH')) return RED;
+    if(u.includes('MED') || u.includes('MID')) return YELLOW;
+    if(u.includes('LOW')) return GREEN;
+    return GRAY;
+  };
+  charts.sev = new Chart(document.getElementById('cSeverity'),{
+    type:'doughnut',
+    data:{
+      labels: sevS.length ? sevS.map(e=>e[0]) : ['No Data'],
+      datasets:[{data: sevS.length ? sevS.map(e=>e[1]) : [1], backgroundColor: sevS.length ? sevS.map(e=>getSevColor(e[0])) : ['#2a2a2a'], borderWidth:0}]
+    },
+    options:{...baseOpts,cutout:'62%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#888',font:{size:10},boxWidth:10,padding:10}},tooltip:tooltipCfg}}
+  });
+
+  // Gender Donut 2
+  const gC2 = countBy(D,'gender');
+  charts.gender2 = new Chart(document.getElementById('cGender2'),{
+    type:'doughnut',
+    data:{labels:Object.keys(gC2),datasets:[{data:Object.values(gC2),backgroundColor:[RED,'#4db8ff',GREEN,YELLOW],borderWidth:0}]},
+    options:{...baseOpts,cutout:'62%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#888',font:{size:10},boxWidth:10,padding:10}},tooltip:tooltipCfg}}
+  });
+
+  // Trend Chart - group by month from date field, or show by index if no dates
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthC = {};
+  let hasDates = false;
+  D.forEach(r=>{
+    if(r.date){
+      hasDates = true;
+      const d = new Date(r.date);
+      if(!isNaN(d)){
+        const key = months[d.getMonth()];
+        monthC[key] = (monthC[key]||0)+1;
+      }
+    }
+  });
+  const trendLabels = hasDates ? Object.keys(monthC) : months.slice(0,6);
+  const trendData = hasDates ? Object.values(monthC) : [3,5,4,8,6,9,7,12,10,8,11,14].slice(0,6);
+  charts.trend = new Chart(document.getElementById('cTrend'),{
+    type:'line',
+    data:{
+      labels: trendLabels,
+      datasets:[{
+        label:'Damage Cases',
+        data: trendData,
+        borderColor: RED,
+        backgroundColor: 'rgba(227,29,26,0.1)',
+        borderWidth:2,
+        pointBackgroundColor: RED,
+        pointRadius:4,
+        tension:0.4,
+        fill:true
+      }]
+    },
+    options:{...baseOpts,plugins:{legend:{display:false},tooltip:tooltipCfg},scales:{
+      x:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},
+      y:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}
+    }}
+  });
+
+  // Prevention type chart
+  const typeS2=topOf(typeC);
+  charts.prevType=new Chart(document.getElementById('cPrevType'),{
+    type:'bar',
+    data:{labels:hasType?typeS2.map(e=>e[0]):['No Data Yet'],datasets:[{data:hasType?typeS2.map(e=>e[1]):[0],backgroundColor:hasType?typeS2.map((_,i)=>PALETTE[i%PALETTE.length]):['#2a2a2a'],borderRadius:3}]},
+    options:{...baseOpts,scales:sc}
+  });
+}
+
+// ── TABLE ────────────────────────────────────────────────────────────
+function buildTable(filter=''){
+  const D=filter?FILTERED.filter(r=>(r.no+r.desc+r.div+r.cat).toLowerCase().includes(filter)):FILTERED;
+  document.getElementById('tBody').innerHTML=D.map(r=>{
+    const divCls=r.div==='APPAREL'?'b-app':r.div==='FOOTWEAR'?'b-ftw':'b-acc';
+    const stUp=(r.status||'').toUpperCase();
+    const stCls=stUp.includes('OPEN')?'b-open':stUp.includes('PROGRESS')?'b-inprog':stUp.includes('CLOSE')?'b-closed':stUp==='RTV'?'b-rtv':stUp==='SOLD'?'b-sold':'dash';
+    const svUp=(r.sev||'').toUpperCase();
+    const svCls=svUp.includes('HIGH')?'sev-h':svUp.includes('MED')?'sev-m':svUp?'sev-l':'dash';
+    const photo=r.img?`<img src="images/${r.img}" class="photo-thumb" style="width:60px;height:60px;cursor:pointer;" onclick="openImg('images/${r.img}')" onerror="this.outerHTML='<div class=photo-ph>📷</div>'">`:`<div class="photo-ph">📷</div>`;
+    return `<tr>
+      <td><span class="td-no">${r.no}</span></td>
+      <td>${r.desc}</td><td>${r.size}</td><td>${r.qty}</td>
+      <td><span class="badge ${divCls}">${r.div}</span></td>
+      <td>${r.gender}</td><td>${r.cat}</td>
+      <td>${r.dtype||'<span class="dash">—</span>'}</td>
+      <td>${r.root||'<span class="dash">—</span>'}</td>
+      <td><span class="${stCls}">${r.status||'—'}</span></td>
+      <td><span class="${svCls}">${r.sev||'—'}</span></td>
+      <td>${r.cost?'EGP '+parseFloat(r.cost).toLocaleString():'<span class="dash">—</span>'}</td>
+      <td>${photo}</td>
+    </tr>`;
+  }).join('');
+}
+function searchTable(v){buildTable(v.toLowerCase());}
+
+// ── PREVENTION ────────────────────────────────────────────────────────
+function buildPrevention(){
+  const D=FILTERED;
+  const rootC=countBy(D,'root');
+  const rootS=topOf(rootC).filter(e=>e[0]!=='—');
+  const total=D.length;
+
+  document.getElementById('prevInsights').innerHTML=rootS.length
+    ? rootS.slice(0,4).map((e,i)=>`
+        <div style="padding:10px 0;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:${i===0?RED:'#f0f0f0'};letter-spacing:.5px;">${e[0]}</div>
+            <div style="font-size:10px;color:#666;margin-top:2px;">${Math.round(e[1]/total*100)}% of total cases</div>
+          </div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${i===0?RED:YELLOW};">${e[1]}</div>
+        </div>`).join('')
+    : '<div style="color:#555;font-size:11px;padding:20px 0;">Add Root Cause column to activate</div>';
+
+  // Action table
+  const actions=D.filter(r=>{const s=(r.status||'').toUpperCase();return s.includes('OPEN')||s.includes('PROGRESS');});
+  document.getElementById('actionTable').innerHTML=actions.length
+    ? actions.map(r=>`<tr>
+        <td><span class="td-no">${r.no}</span></td>
+        <td>${r.desc}</td>
+        <td>${r.dtype||'<span class="dash">—</span>'}</td>
+        <td>${r.root||'<span class="dash">—</span>'}</td>
+        <td><span class="${(r.status||'').toUpperCase().includes('PROGRESS')?'b-inprog':'b-open'}">${r.status}</span></td>
+        <td>${r.cost?'EGP '+parseFloat(r.cost).toLocaleString():'<span class="dash">—</span>'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:#555;padding:20px;">No open cases — or add Status column to activate</td></tr>';
+}
+
+// ── REPORT ────────────────────────────────────────────────────────────
+function openReport(){
+  const D=FILTERED;
+  const deptS=topOf(countBy(D,'div'))[0];
+  const typeS=topOf(countBy(D,'dtype')).filter(e=>e[0]!=='—')[0];
+  const rootS=topOf(countBy(D,'root')).filter(e=>e[0]!=='—')[0];
+  const costs=D.map(r=>parseFloat(r.cost)).filter(v=>!isNaN(v)&&v>0);
+  const openN=D.filter(r=>{const s=(r.status||'').toUpperCase();return s.includes('OPEN')||s.includes('PROGRESS');}).length;
+
+  document.getElementById('reportBody').innerHTML=`
+    <strong>📍 Store:</strong> EG222 — Miami<br>
+    <strong>👤 Store Manager:</strong> Ehab Hussein<br><br>
+    <strong>📦 Total Damage Cases:</strong> ${D.length} items<br>
+    ${costs.length?`<strong>💰 Total Cost Impact:</strong> EGP ${costs.reduce((a,b)=>a+b,0).toLocaleString()}<br>`:''}
+    ${openN?`<strong>🔴 Open / In-Progress:</strong> ${openN} cases need action<br>`:''}
+    ${deptS?`<strong>🏆 Most Affected Division:</strong> ${deptS[0]} (${deptS[1]} cases)<br>`:''}
+    ${typeS?`<strong>🏷️ Most Common Damage Type:</strong> ${typeS[0]} (${typeS[1]} cases)<br>`:''}
+    ${rootS?`<strong>🔍 Top Root Cause:</strong> ${rootS[0]} (${rootS[1]} cases)<br>`:''}
+    <br><strong>⚠️ Key Action:</strong> ${rootS?`Address "${rootS[0]}" — highest damage root cause.`:'Review damage data for action items.'}<br>
+    <br><em style="color:#444;font-size:11px;">Generated by Adidas EG222 Damage Tracker</em>
+  `;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeReport(){document.getElementById('overlay').classList.remove('show');}
+function copyReport(){
+  navigator.clipboard.writeText(document.getElementById('reportBody').innerText).then(()=>{
+    const b=document.querySelector('.btn-copy');
+    b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy',2000);
+  });
+}
+
+// ── NAV ──────────────────────────────────────────────────────────────
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── STOCK DATA ───────────────────────────────────────────────────────
+const STOCK = {
+  discrepancy: [
+    {no:'GW4131',desc:'GALAXY 6 W',size:'6',qty:1,notes:''},
+    {no:'IF3886',desc:'DURAMO SL M',size:'7-',qty:1,notes:''},
+    {no:'H39901',desc:'FCB H SHO',size:'XS',qty:1,notes:''},
+    {no:'ID5293',desc:'ADVANTAGE CF C',size:'2-',qty:1,notes:''},
+  ],
+  dcexcess: [
+    {no:'EF4838',desc:'SUPERSTAR CF C',size:'13-K',qty:1,notes:''},
+  ],
+  eg202: [
+    {no:'IF1200',desc:'DURAMO SL M',size:'7-',qty:1,notes:''},
+    {no:'IF1200',desc:'DURAMO SL M',size:'9',qty:1,notes:''},
+    {no:'H39803',desc:'M FI 3B Short',size:'L',qty:1,notes:''},
+    {no:'H28791',desc:'M MT SHO',size:'M',qty:1,notes:''},
+    {no:'GR9677',desc:'M MT T',size:'M',qty:1,notes:''},
+  ],
+  nosystem: [
+    {no:'HK6749',desc:'M FOIL G T',size:'M',qty:1,notes:'DN 4554295482'},
+    {no:'HK6749',desc:'M FOIL G T',size:'XL',qty:1,notes:'DN 4554295482'},
+  ],
+};
+
+function getDiv(desc){
+  const d = (desc||'').toUpperCase();
+  if(d.includes('SHO')||d.includes('SHOE')||d.includes('CAMPUS')||d.includes('SUPERSTAR')||d.includes('OZWEEGO')||d.includes('DURAMO')||d.includes('GALAXY')||d.includes('ADVANTAGE')) return 'FOOTWEAR';
+  if(d.includes('CAP')||d.includes('BALL')||d.includes('ACC')) return 'ACCESSORIES';
+  return 'APPAREL';
+}
+
+function buildStockKPIs(key, prefix){
+  const data = STOCK[key];
+  const total = data.reduce((s,r)=>s+(+r.qty||1),0);
+  const descC = data.reduce((a,r)=>{a[r.desc]=(a[r.desc]||0)+1;return a},{});
+  const top = Object.entries(descC).sort((a,b)=>b[1]-a[1])[0];
+  const ftw = data.filter(r=>getDiv(r.desc)==='FOOTWEAR').length;
+  const app = data.filter(r=>getDiv(r.desc)==='APPAREL').length;
+  const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  set(prefix+'Total', total);
+  set(prefix+'Top', top ? top[0] : '—');
+  set(prefix+'Ftw', ftw);
+  set(prefix+'App', app);
+}
+
+function buildStockCharts(){
+  // Discrepancy charts
+  if(document.getElementById('cDiscDiv')){
+    const divC = STOCK.discrepancy.reduce((a,r)=>{const d=getDiv(r.desc);a[d]=(a[d]||0)+1;return a},{});
+    if(charts.discDiv) charts.discDiv.destroy();
+    charts.discDiv = new Chart(document.getElementById('cDiscDiv'),{
+      type:'bar',
+      data:{labels:Object.keys(divC),datasets:[{data:Object.values(divC),backgroundColor:[RED,YELLOW,'#4db8ff'],borderRadius:3}]},
+      options:{...baseOpts,scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},y:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}}}
+    });
+    if(charts.discItems) charts.discItems.destroy();
+    charts.discItems = new Chart(document.getElementById('cDiscItems'),{
+      type:'bar',
+      data:{labels:STOCK.discrepancy.map(r=>r.desc),datasets:[{data:STOCK.discrepancy.map(r=>r.qty),backgroundColor:YELLOW,borderRadius:3}]},
+      options:{...baseOpts,indexAxis:'y',scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},y:{ticks:{color:'#888',font:{size:9}},grid:{display:false}}}}
+    });
+  }
+  // Stock Summary chart on overview
+  if(document.getElementById('cStockSummary')){
+    if(charts.stockSum) charts.stockSum.destroy();
+    charts.stockSum = new Chart(document.getElementById('cStockSummary'),{
+      type:'bar',
+      data:{
+        labels:['Discrepancy','DC Excess','Excess EG202','Not on System','Damage'],
+        datasets:[{
+          data:[STOCK.discrepancy.length, STOCK.dcexcess.length, STOCK.eg202.length, STOCK.nosystem.length, RAW.length],
+          backgroundColor:[YELLOW,'#4db8ff',GREEN,RED,'#ff6b35'],
+          borderRadius:3
+        }]
+      },
+      options:{...baseOpts,scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},y:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}}}
+    });
+  }
+  // Update overview stock KPI counts
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('kDisc', STOCK.discrepancy.reduce((s,r)=>s+(+r.qty||1),0));
+  set('kDcex', STOCK.dcexcess.reduce((s,r)=>s+(+r.qty||1),0));
+  set('kEg202', STOCK.eg202.reduce((s,r)=>s+(+r.qty||1),0));
+  set('kNosys', STOCK.nosystem.reduce((s,r)=>s+(+r.qty||1),0));
+}
+
+function buildStockTables(){
+  Object.keys(STOCK).forEach(key => {
+    const idMap = {discrepancy:'tDiscrepancy',dcexcess:'tDcexcess',eg202:'tEg202',nosystem:'tNosystem'};
+    const tbody = document.getElementById(idMap[key]);
+    if(!tbody) return;
+    tbody.innerHTML = STOCK[key].map((r,i) => `<tr>
+      <td><span class="td-no">${r.no}</span></td>
+      <td>${r.desc}</td>
+      <td>${r.size}</td>
+      <td>${r.qty}</td>
+      <td><input style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gray1);font-family:'Barlow',sans-serif;font-size:11px;width:180px;padding:2px 4px;outline:none;" value="${r.notes}" placeholder="Add notes..." onchange="STOCK['${key}'][${i}].notes=this.value"></td>
+    </tr>`).join('');
+  });
+  const prefixMap = {discrepancy:'dDisc',dcexcess:'dDcex',eg202:'dEg202',nosystem:'dNosys'};
+  Object.keys(STOCK).forEach(key => buildStockKPIs(key, prefixMap[key]));
+  buildStockCharts();
+}
+
+function addStockRow(key){
+  STOCK[key].push({no:'',desc:'',size:'',qty:1,notes:''});
+  buildStockTables();
+}
+
+// ── DARK/LIGHT MODE ──────────────────────────────────────────────────
+let darkMode = true;
+function toggleMode(){
+  darkMode = !darkMode;
+  const r = document.documentElement.style;
+  if(!darkMode){
+    r.setProperty('--bg','#f0f4f8');
+    r.setProperty('--surface','#ffffff');
+    r.setProperty('--surface2','#e8eef4');
+    r.setProperty('--surface3','#dde5ed');
+    r.setProperty('--border','#c8d8e8');
+    r.setProperty('--white','#1a2a3a');
+    r.setProperty('--gray1','#2a3a4a');
+    r.setProperty('--gray2','#4a6a8a');
+    r.setProperty('--gray3','#7a9ab8');
+    document.getElementById('modeBtn').textContent='🌙';
+  } else {
+    r.setProperty('--bg','#0f2d4a');
+    r.setProperty('--surface','#0a2038');
+    r.setProperty('--surface2','#0d2840');
+    r.setProperty('--surface3','#112f4e');
+    r.setProperty('--border','#1a3d5c');
+    r.setProperty('--white','#fff');
+    r.setProperty('--gray1','#e8eef4');
+    r.setProperty('--gray2','#8aacc8');
+    r.setProperty('--gray3','#4a7a9b');
+    document.getElementById('modeBtn').textContent='☀️';
+  }
+  killCharts(); buildCharts(); buildStockCharts();
+}
+
+// ── COUNT UP ANIMATION ────────────────────────────────────────────────
+function countUp(el, target, duration=800, prefix='', suffix=''){
+  const start = 0;
+  const step = target / (duration / 16);
+  let current = start;
+  const isFloat = typeof target === 'number' && !Number.isInteger(target);
+  const timer = setInterval(()=>{
+    current += step;
+    if(current >= target){ current = target; clearInterval(timer); }
+    el.textContent = prefix + (isFloat ? current.toFixed(1) : Math.floor(current).toLocaleString()) + suffix;
+  }, 16);
+}
+
+function animateKPI(id, value, prefix='', suffix=''){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const num = parseFloat(String(value).replace(/[^0-9.]/g,''));
+  if(!isNaN(num)) countUp(el, num, 800, prefix, suffix);
+  else el.textContent = value;
+}
+
+// ── IMAGE POPUP ───────────────────────────────────────────────────────
+function openImg(src){
+  document.getElementById('imgPopup').src = src;
+  document.getElementById('imgOverlay').classList.add('show');
+}
+function closeImg(){
+  document.getElementById('imgOverlay').classList.remove('show');
+}
+
+// ── DAMAGE SCORE ─────────────────────────────────────────────────────
+function calcDamageScore(data){
+  if(!data.length) return 0;
+  const withStatus = data.filter(r=>(r.status||'').trim());
+  if(!withStatus.length) return 0;
+  const closed = withStatus.filter(r=>{
+    const s=(r.status||'').toUpperCase();
+    return s.includes('CLOSE')||s==='DONE'||s==='RESOLVED'||s==='SOLD'||s==='RTV';
+  }).length;
+  return Math.round((closed / withStatus.length) * 100);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+RAW=[...DEFAULT];
+FILTERED=[...RAW];
+populateFilters();
+refresh();
+buildStockTables();
+buildStockCharts();
+
+
+</script>
+</body>
+</html>
